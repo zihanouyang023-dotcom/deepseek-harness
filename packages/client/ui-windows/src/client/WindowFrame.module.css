@@ -1,0 +1,130 @@
+/* One window: a white rounded frame floating on the desktop wallpaper, with a
+   colored title bar while focused and a gray one while inactive; bottom-right
+   resize handle; maximized frames fill the work area and drop the radius. */
+.frame {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--dsw-static-neutral-00);
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  box-shadow: var(--dsw-shadow-lv3);
+  touch-action: none;
+}
+
+.frame[data-focused='false'] {
+  box-shadow: var(--dsw-shadow-lv1);
+}
+
+.frame[data-maximized='true'] {
+  border: none;
+  border-radius: 0;
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  flex: none;
+  height: 40px;
+  padding: 0 4px 0 14px;
+  gap: 4px;
+  background: var(--dsw-static-neutral-150);
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
+  cursor: default;
+  user-select: none;
+}
+
+.frame[data-focused='true'] .titleBar {
+  background: linear-gradient(90deg, var(--dsw-static-deepseek-600), var(--dsw-static-deepseek-500));
+  border-bottom-color: transparent;
+}
+
+.titleText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.frame[data-focused='true'] .title,
+.frame[data-focused='true'] .subtitle {
+  color: var(--dsw-static-neutral-00);
+}
+
+.subtitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.frame[data-focused='true'] .subtitle {
+  opacity: 0.85;
+}
+
+.control {
+  flex: none;
+  width: 34px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.control:hover {
+  background: var(--dsw-alias-button-ghost-active-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.frame[data-focused='true'] .control {
+  color: var(--dsw-static-neutral-00);
+}
+
+.frame[data-focused='true'] .control:hover {
+  background: var(--dsw-static-deepseek-400);
+  color: var(--dsw-static-neutral-00);
+}
+
+.frame[data-focused='true'] .control[data-kind='close']:hover {
+  background: var(--dsw-static-red-600);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--dsw-static-neutral-50);
+}
+
+.resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 2;
+}

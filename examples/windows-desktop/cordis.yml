@@ -1,0 +1,15 @@
+# Windows-like desktop profile: a patch overlay over the web profile.
+# Replaces the three-column shell (ui-layout) with the one-window-per-Workspace
+# desktop (ui-windows, disabled inside the web-app bundle by default). Both
+# layouts register into 'root' and declare the same frame child slots, so they
+# must not co-load; the desktop provides ctx.layout itself, which keeps the
+# layout-dependent feature plugins active. Run with:
+#   pnpm dsh web --patch examples/windows-desktop/cordis.yml
+
+- id: ui-layout
+  name: '@deepseek-ai/dsh-client-ui-layout'
+  disabled: true
+
+- id: ui-windows
+  name: '@deepseek-ai/dsh-client-ui-windows'
+  disabled: false

@@ -1,0 +1,77 @@
+/* Desktop chrome: a wallpaper-gradient work area over the dark taskbar, the
+   start panel above it, and the frame-wide overlay layer (click-through until
+   an entry opts in). */
+.desktop {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 520px at 82% -8%, var(--dsw-static-deepseek-300), transparent 62%),
+    linear-gradient(155deg, var(--dsw-static-deepseek-500) 0%, var(--dsw-static-deepseek-800) 58%, var(--dsw-static-deepseek-950) 100%);
+}
+
+.workArea {
+  position: absolute;
+  inset: 0 0 48px 0;
+  overflow: hidden;
+}
+
+.focusedBody {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+}
+
+.centerCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.detailsPane {
+  flex: none;
+  width: 380px;
+  border-left: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-static-neutral-50);
+  overflow: hidden;
+}
+
+.overlayLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.overlayLayer > * {
+  pointer-events: auto;
+}
+
+.startPanel {
+  position: absolute;
+  left: 12px;
+  bottom: 60px;
+  width: 340px;
+  max-height: 70%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--dsw-static-neutral-50);
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  box-shadow: var(--dsw-shadow-lv3);
+  z-index: 30;
+}
+
+.emptyHint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-static-neutral-00);
+  opacity: 0.9;
+  font-size: 14px;
+}

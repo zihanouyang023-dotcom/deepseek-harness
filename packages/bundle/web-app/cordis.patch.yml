@@ -180,6 +180,16 @@
     - id: ui-layout
       name: '@deepseek-ai/dsh-client-ui-layout'
 
+    # Windows-like desktop shell: one window per Workspace over the built-in
+    # root slot. Disabled by default — it registers into the same 'root'
+    # slot and declares the same frame child slots as ui-layout, so a
+    # profile enables it only while disabling ui-layout (the plugin provides
+    # ctx.layout itself, keeping layout-dependent feature plugins active).
+    # See examples/windows-desktop/cordis.yml.
+    - id: ui-windows
+      name: '@deepseek-ai/dsh-client-ui-windows'
+      disabled: true
+
     - id: ui-sidebar
       name: '@deepseek-ai/dsh-client-ui-sidebar'
 
