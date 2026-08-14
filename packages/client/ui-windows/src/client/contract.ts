@@ -16,18 +16,20 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
     // alternatives, never co-loaded — a profile enables one and disables the
     // other, so the identical declarations never collide at runtime.
     /**
-     * The start panel's content column, hosting the sidebar plugin. The
-     * desktop supplies live panel state; a closed panel unmounts the seat.
+     * The fixed left sidebar column (native ui-sidebar: workspace/session
+     * browser). The desktop supplies live column state; a closed sidebar
+     * collapses to the compact rail via the same collapsed/width share.
      */
     'sidebar': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
-     * The focused window's center column: the current-session conversation
-     * (session-maybe, so the no-session hero renders while no session is
-     * current — the desktop renders the seat only inside a focused window).
+     * The current session's conversation surface, rendered once inside the
+     * current session's window (session-maybe: the no-session hero renders
+     * while no session is current).
      */
     'conversation': { kind: 'single'; scope: 'session-maybe'; owner: ConversationOwnerProps }
     /**
-     * The focused window's right pane, mounted while the desktop opens it.
+     * The current session window's right pane, mounted while the desktop
+     * opens it.
      */
     'details': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
     /**
@@ -38,11 +40,11 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-/** Sidebar owner share: live panel state from the desktop (width is the open panel width). */
+/** Sidebar owner share: live column state from the desktop. */
 export interface SidebarOwnerProps {
-  /** True when the start panel is closed (the desktop unmounts the seat). */
+  /** True when the sidebar is closed (renders the compact control rail). */
   collapsed: boolean
-  /** Rendered panel width in px. */
+  /** Rendered column width in px. */
   width: number
 }
 
@@ -54,9 +56,9 @@ export interface DetailsOwnerProps {}
 
 /** One window's desktop-local viewport geometry. */
 export interface WindowGeometry {
-  /** Left edge in px (clamped to the desktop). */
+  /** Left edge in world px (canvas coordinates; unclamped on the infinite canvas). */
   x: number
-  /** Top edge in px (clamped to the desktop). */
+  /** Top edge in world px. */
   y: number
   /** Width in px (minimum enforced by the store). */
   w: number

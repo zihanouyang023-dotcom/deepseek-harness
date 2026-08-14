@@ -1,18 +1,8 @@
 // @vitest-environment jsdom
-/**
- * Desktop interaction spec under the four-share props form: real windows
- * store instance (createWindowsStore().create() — the test-sanctioned engine
- * path), a recording renderSlot stub, and a render-prop SessionProvider stub
- * (the real one is framework-wired to the renderer host; its own behavior is
- * web-react's spec territory). Preserved behavior: window-per-workspace
- * projection, focused-window routing of the conversation, overview routing of
- * the remaining windows, taskbar minimize/restore, start-panel hosting of the
- * sidebar seat, details toggling, and the ungrouped-session fallback window.
- */
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
 import type {
-  SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
+  SessionId, SessionListState, SessionSummary, WorkspaceListState,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Desktop } from '../src/client/Desktop.tsx'
@@ -22,21 +12,12 @@ import { createWindowsStore } from '../src/client/stores.ts'
 afterEach(cleanup)
 
 const sid = (id: string) => id as SessionId
-const wid = (id: string) => id as WorkspaceId
 const summary = (id: string, cwd: string, overrides: Partial<SessionSummary> = {}): SessionSummary => ({
   id: sid(id), displayTitle: id, cwd, running: false, blank: false, updatedAt: 1, ...overrides,
 })
-const workspace = (id: string, sessionIds: string[] = []): WorkspaceView => ({
-  workspaceId: wid(id), path: `/projects/${id}`, title: id, sessionIds: sessionIds.map(sid),
-  createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
-})
 
-/** Mutable fixture feeds for the stub hooks (single source per test). */
 let currentSession: SessionId | undefined
 let rows: SessionSummary[] = []
-let items: WorkspaceView[] = []
-let baselinesReady = true
-let archivedIds: SessionId[] = []
 
 const sessionListState = (): SessionListState => ({
   ids: rows.map(r => r.id),
@@ -49,21 +30,14 @@ const sessionListState = (): SessionListState => ({
 })
 
 const workspaceListState = (): WorkspaceListState => ({
-  items,
-  archivedSessionIds: archivedIds,
-  state: 'idle',
-  phase: 'ready',
-  error: null,
-  baselinesReady,
-  recentWorkspaceId: items[0]?.workspaceId,
+  items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+  baselinesReady: true, recentWorkspaceId: undefined,
 })
 
-/** Test-local selector hook over a framework-neutral store instance. */
 function hookOf<T>(inst: { subscribe: (fn: () => void) => () => void; getSnapshot: () => T }) {
   return function useSelector<S>(sel: (s: T) => S): S { return sel(useSyncExternalStore(inst.subscribe, inst.getSnapshot)) }
 }
 
-/** Render-prop contract stub fed through the standard seat prop. */
 const SessionProvider: DesktopProps['SessionProvider'] = ({ children, empty }) =>
   currentSession === undefined ? <>{empty?.() ?? null}</> : <>{children(currentSession)}</>
 
@@ -97,74 +71,103 @@ beforeEach(() => {
   localStorage.clear()
   currentSession = undefined
   rows = []
-  items = []
-  baselinesReady = true
-  archivedIds = []
 })
 
 describe('Desktop', () => {
-  it('renders one window per workspace and hosts the conversation in the focused window', () => {
-    items = [workspace('w1', ['s1']), workspace('w2')]
+  it('renders the fixed sidebar column hosting the native sidebar seat', () => {
     rows = [summary('s1', '/projects/w1')]
     currentSession = sid('s1')
     const { slotCalls } = mount()
-    expect(titlebars()).toHaveLength(2)
+    expect(screen.getByTestId('sidebar-column')).toBeTruthy()
+    expect(screen.getByTestId('sidebar-content')).toBeTruthy()
+    const sidebarCall = slotCalls.find(c => c.key === 'sidebar')
+    expect(sidebarCall!.owner).toEqual({ collapsed: false, width: 280 })
+  })
+
+  it('opens no window without a current session', () => {
+    rows = [summary('s1', '/projects/w1'), summary('s2', '/projects/w2')]
+    mount()
+    expect(titlebars()).toHaveLength(0)
+    expect(screen.getByText('点击左侧列表中的会话，窗口会在这里弹出')).toBeTruthy()
+  })
+
+  it('opens a window for the current session and keeps prior windows as placeholders', () => {
+    rows = [summary('s1', '/projects/w1'), summary('s2', '/projects/w2')]
+    currentSession = sid('s1')
+    const { instance } = mount()
+    expect(titlebars()).toHaveLength(1)
     expect(screen.getAllByTestId('conversation-content')).toHaveLength(1)
-    expect(screen.getAllByTestId('conversation-content')[0]?.parentElement?.parentElement).toBeTruthy()
-    expect(slotCalls.filter(c => c.key === 'conversation').length).toBeGreaterThan(0)
-    // The focused window renders last (front-most).
-    expect(titlebars()[1]?.textContent).toContain('w1')
-    expect(screen.getByTestId('overlay-content')).toBeTruthy()
+    // A previously-opened session stays mounted as a placeholder.
+    act(() => { instance.actions.openWindow('s2') })
+    expect(titlebars()).toHaveLength(2)
+    expect(screen.getByText('空闲 · 点击左侧列表切换')).toBeTruthy()
   })
 
-  it('shows session overviews in non-focused windows and routes their actions', () => {
-    items = [workspace('w1'), workspace('w2', ['s2'])]
-    rows = [summary('s2', '/projects/w2')]
-    const { props } = mount()
-    expect(screen.queryByTestId('conversation-content')).toBeNull()
-    fireEvent.click(screen.getByText('s2'))
-    expect((props as unknown as { openSession: ReturnType<typeof vi.fn> }).openSession).toHaveBeenCalledWith(sid('s2'))
-    // Two windows each carry a New Session action; the second belongs to w2.
-    fireEvent.click(screen.getAllByText('新建会话')[1]!)
-    expect((props as unknown as { startSession: ReturnType<typeof vi.fn> }).startSession).toHaveBeenCalledWith(wid('w2'))
-    expect(screen.getByText('此工作区还没有会话 — 点“新建会话”开始')).toBeTruthy()
+  it('closing a window removes it from the opened set', () => {
+    rows = [summary('s1', '/projects/w1'), summary('s2', '/projects/w2')]
+    currentSession = sid('s1')
+    const { instance } = mount()
+    act(() => { instance.actions.openWindow('s2') })
+    expect(titlebars()).toHaveLength(2)
+    // Close the non-current (s2) window: its frame title is 's2'.
+    const s2Frame = Array.from(document.querySelectorAll<HTMLElement>('[data-testid="window-titlebar"]'))
+      .find(tb => tb.textContent?.includes('s2'))
+    const s2Close = s2Frame!.querySelector('button[aria-label="关闭"]')!
+    fireEvent.click(s2Close)
+    expect(titlebars()).toHaveLength(1)
+    expect(instance.getSnapshot().openedWindows).toEqual(['s1'])
   })
 
-  it('taskbar buttons minimize the focused window and restore it', () => {
-    items = [workspace('w1', ['s1']), workspace('w2')]
+  it('pan and zoom drive the world transform', () => {
     rows = [summary('s1', '/projects/w1')]
     currentSession = sid('s1')
     const { instance } = mount()
-    const w1 = screen.getAllByTestId('taskbar-workspace')[0]!
-    expect(w1.dataset.focused).toBe('true')
-    fireEvent.click(w1)
-    expect(titlebars()).toHaveLength(1) // w1 minimized
-    expect(w1.dataset.minimized).toBe('true')
-    fireEvent.click(w1)
-    expect(titlebars()).toHaveLength(2)
-    expect(w1.dataset.minimized).toBe('false')
-    // A click on a non-focused window raises it without changing selection.
-    const w2 = screen.getAllByTestId('taskbar-workspace')[1]!
-    fireEvent.click(w2)
-    expect(instance.getSnapshot().zOrder[instance.getSnapshot().zOrder.length - 1]).toBe('w2')
+    const world = screen.getByTestId('desktop-world')
+    act(() => { instance.actions.panBy(40, -20) })
+    expect(world.style.transform).toBe('translate(40px, -20px) scale(1)')
+    act(() => { instance.actions.setViewport({ panX: 40, panY: -20, zoom: 1.5 }) })
+    expect(world.style.transform).toBe('translate(40px, -20px) scale(1.5)')
   })
 
-  it('start button toggles the start panel hosting the sidebar seat', () => {
-    items = [workspace('w1')]
-    const { slotCalls } = mount()
-    expect(screen.queryByTestId('start-panel')).toBeNull()
-    fireEvent.click(screen.getByLabelText('开始'))
-    expect(screen.getByTestId('start-panel')).toBeTruthy()
-    const sidebarCall = slotCalls.find(c => c.key === 'sidebar')
-    expect(sidebarCall).toBeTruthy()
-    expect(sidebarCall!.owner).toEqual({ collapsed: false, width: 340 })
-    expect(screen.getByTestId('sidebar-content')).toBeTruthy()
-    fireEvent.click(screen.getByLabelText('开始'))
-    expect(screen.queryByTestId('start-panel')).toBeNull()
+  it('wheel over a window does not rezoom; wheel over blank canvas zooms', () => {
+    rows = [summary('s1', '/projects/w1')]
+    currentSession = sid('s1')
+    const { instance } = mount()
+    const world = screen.getByTestId('desktop-world')
+    expect(instance.getSnapshot().viewport.zoom).toBe(1)
+    // Wheel over the window content (the conversation) must NOT zoom.
+    fireEvent.wheel(screen.getByTestId('conversation-content'), { deltaY: -100 })
+    expect(instance.getSnapshot().viewport.zoom).toBe(1)
+    // Wheel over the blank canvas must zoom.
+    fireEvent.wheel(screen.getByTestId('desktop-canvas'), { deltaY: -100 })
+    expect(instance.getSnapshot().viewport.zoom).toBeGreaterThan(1)
+    expect(world).toBeTruthy()
   })
 
-  it('opens the details pane inside the focused window through the store', () => {
-    items = [workspace('w1', ['s1']), workspace('w2')]
+  it('taskbar buttons minimize the current window and restore it', () => {
+    rows = [summary('s1', '/projects/w1'), summary('s2', '/projects/w2')]
+    currentSession = sid('s1')
+    const { instance } = mount()
+    act(() => { instance.actions.openWindow('s2') })
+    const s1 = screen.getAllByTestId('taskbar-workspace').find(b => b.dataset.windowId === 's1')!
+    expect(s1.dataset.focused).toBe('true')
+    fireEvent.click(s1)
+    expect(s1.dataset.minimized).toBe('true')
+    fireEvent.click(s1)
+    expect(s1.dataset.minimized).toBe('false')
+  })
+
+  it('clicking a non-current window opens that session', () => {
+    rows = [summary('s1', '/projects/w1'), summary('s2', '/projects/w2')]
+    currentSession = sid('s1')
+    const { instance, props } = mount()
+    act(() => { instance.actions.openWindow('s2') })
+    const s2 = screen.getAllByTestId('taskbar-workspace').find(b => b.dataset.windowId === 's2')!
+    fireEvent.click(s2)
+    expect((props as unknown as { openSession: ReturnType<typeof vi.fn> }).openSession).toHaveBeenCalledWith(sid('s2'))
+  })
+
+  it('opens the details pane inside the current window through the store', () => {
     rows = [summary('s1', '/projects/w1')]
     currentSession = sid('s1')
     const { instance } = mount()
@@ -175,29 +178,63 @@ describe('Desktop', () => {
     expect(screen.queryByTestId('details-content')).toBeNull()
   })
 
-  it('raises the start panel automatically on an empty, ready workspace baseline', () => {
-    items = []
-    baselinesReady = true
-    mount()
-    expect(screen.getByTestId('start-panel')).toBeTruthy()
-    expect(screen.getByText('没有工作区 — 打开开始菜单注册一个目录')).toBeTruthy()
+  it('keeps the current session window when the live list stops listing it', () => {
+    rows = [summary('s1', '/projects/w1')]
+    currentSession = sid('s1')
+    const { utils, instance, props } = mount()
+    expect(titlebars()).toHaveLength(1)
+    // A refetching or filtered list can drop the current session from ids
+    // while its summary stays; the prune must not strand the window closed
+    // (the open effect only re-runs when currentId changes).
+    const filtered = { ...sessionListState(), ids: [] as SessionId[] }
+    const rerenderProps = {
+      ...props,
+      useSessions: ((sel: (s: SessionListState) => unknown) => sel(filtered)) as never,
+    }
+    utils.rerender(<Desktop {...rerenderProps} />)
+    expect(instance.getSnapshot().openedWindows).toEqual(['s1'])
+    expect(titlebars()).toHaveLength(1)
   })
 
-  it('keeps the start panel closed while the workspace baseline is pending', () => {
-    items = []
-    baselinesReady = false
-    mount()
-    expect(screen.queryByTestId('start-panel')).toBeNull()
+  it('right-clicking the blank canvas opens the zoom menu; items zoom and reset', () => {
+    rows = [summary('s1', '/projects/w1')]
+    currentSession = sid('s1')
+    const { instance } = mount()
+    const canvas = screen.getByTestId('desktop-canvas')
+    fireEvent.contextMenu(canvas)
+    expect(screen.getByTestId('canvas-menu')).toBeTruthy()
+    fireEvent.click(screen.getByText('缩小'))
+    expect(instance.getSnapshot().viewport.zoom).toBeLessThan(1)
+    fireEvent.contextMenu(canvas)
+    fireEvent.click(screen.getByText('放大'))
+    fireEvent.contextMenu(canvas)
+    fireEvent.click(screen.getByText('放大'))
+    expect(instance.getSnapshot().viewport.zoom).toBeGreaterThan(1)
+    fireEvent.contextMenu(canvas)
+    fireEvent.click(screen.getByText('重置视图'))
+    expect(instance.getSnapshot().viewport).toEqual({ panX: 0, panY: 0, zoom: 1 })
+    expect(screen.queryByTestId('canvas-menu')).toBeNull()
   })
 
-  it('renders a fallback window for a current session whose cwd has no workspace', () => {
-    items = [workspace('w1')]
-    rows = [summary('s1', '/ungrouped')]
+  it('the zoom menu closes on Escape and on a press outside itself', () => {
+    rows = [summary('s1', '/projects/w1')]
     currentSession = sid('s1')
     mount()
-    expect(titlebars()).toHaveLength(2) // w1 + fallback
-    expect(screen.getAllByTestId('conversation-content')).toHaveLength(1)
-    expect(screen.getAllByText('s1')).toHaveLength(2) // fallback title + taskbar status
-    expect(screen.getByText('/ungrouped')).toBeTruthy() // fallback subtitle
+    const canvas = screen.getByTestId('desktop-canvas')
+    fireEvent.contextMenu(canvas)
+    expect(screen.getByTestId('canvas-menu')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('canvas-menu')).toBeNull()
+    fireEvent.contextMenu(canvas)
+    fireEvent.pointerDown(document.body)
+    expect(screen.queryByTestId('canvas-menu')).toBeNull()
+  })
+
+  it('right-clicking inside a window does not open the canvas menu', () => {
+    rows = [summary('s1', '/projects/w1')]
+    currentSession = sid('s1')
+    mount()
+    fireEvent.contextMenu(screen.getByTestId('conversation-content'))
+    expect(screen.queryByTestId('canvas-menu')).toBeNull()
   })
 })

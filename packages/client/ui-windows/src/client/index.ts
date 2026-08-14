@@ -21,7 +21,7 @@ export type {
   DesktopProps, DesktopInjected, SidebarOwnerProps, ConversationOwnerProps,
   DetailsOwnerProps, WindowGeometry,
 } from './contract.ts'
-export type { DesktopState, DesktopActions } from './stores.ts'
+export type { DesktopState, DesktopActions, Viewport } from './stores.ts'
 export type { IWindowsLayout, DesktopBoundActions } from './service.ts'
 
 declare module '@deepseek-ai/cordis' {

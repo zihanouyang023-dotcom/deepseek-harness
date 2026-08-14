@@ -48,7 +48,7 @@ describe('ui-windows client apply', () => {
     const { ctx, slots } = await bench()
     const fiber = ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
-    const actions = { toggleStart: vi.fn(), setDetailsOpen: vi.fn() }
+    const actions = { toggleSidebar: vi.fn(), setDetailsOpen: vi.fn() }
     const injected = (slots.entries('root')[0]!.inject as (actions: never) => object)(actions as never) as {
       startSession: (id?: string) => void
       openSession: (id: string) => void
@@ -61,7 +61,7 @@ describe('ui-windows client apply', () => {
     expect((ctx.get('sessions') as unknown as { open: ReturnType<typeof vi.fn> }).open).toHaveBeenCalledWith('s-1')
     const layout = ctx.get('layout') as WindowsLayoutController
     layout.toggleSidebar()
-    expect(actions.toggleStart).toHaveBeenCalledOnce()
+    expect(actions.toggleSidebar).toHaveBeenCalledOnce()
     layout.openDetails()
     expect(actions.setDetailsOpen).toHaveBeenLastCalledWith(true)
   })

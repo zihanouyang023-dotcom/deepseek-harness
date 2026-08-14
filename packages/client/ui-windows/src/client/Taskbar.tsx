@@ -1,55 +1,61 @@
 /**
- * The desktop taskbar: start button, one button per workspace (minimized
- * state shown by the button fill), and the current session's status on the
- * right. Pure component: everything arrives through props.
+ * The desktop taskbar: a sidebar toggle, one button per opened session window
+ * (minimized state shown by the button fill, current session highlighted),
+ * and the current session's status on the right. Pure component: everything
+ * arrives through props.
  */
-import type { WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
 import css from './Taskbar.module.css'
+import { IconGrid } from './icons.tsx'
+
+/** One taskbar window row. */
+export interface TaskbarWindow {
+  /** Session id string form. */
+  id: string
+  /** Display title. */
+  title: string
+  /** Minimized flag. */
+  minimized: boolean
+}
 
 /** Taskbar interaction props. */
 export interface TaskbarProps {
-  /** Workspaces in registry order. */
-  workspaces: readonly WorkspaceView[]
-  /** Minimized flags keyed by the workspace id's string form. */
-  minimized: Record<string, boolean>
-  /** The focused workspace id (current session's workspace), string form. */
-  focusedId: string | undefined
+  /** Opened session windows in render order. */
+  windows: readonly TaskbarWindow[]
+  /** The current session's window id (string form). */
+  currentId: string | undefined
   /** Current session display title (right-side status). */
   currentTitle: string | undefined
   /** Current session running state (right-side status dot). */
   currentRunning: boolean
-  /** Start panel state (start button fill). */
-  startOpen: boolean
-  /** Toggle the start panel. */
-  onToggleStart: () => void
-  /** Taskbar click on one workspace button (restore/focus/minimize per state). */
+  /** Sidebar column open (toggle fill). */
+  sidebarOpen: boolean
+  /** Toggle the fixed left sidebar column. */
+  onToggleSidebar: () => void
+  /** Taskbar click on one session window button (restore/focus/minimize). */
   onWorkspace: (id: string) => void
 }
 
 /** The desktop taskbar (see module doc). */
 export function Taskbar({
-  workspaces, minimized, focusedId, currentTitle, currentRunning, startOpen, onToggleStart, onWorkspace,
+  windows, currentId, currentTitle, currentRunning, sidebarOpen, onToggleSidebar, onWorkspace,
 }: TaskbarProps) {
   return (
     <div className={css.taskbar}>
-      <button type="button" className={css.startButton} data-start-open={startOpen} aria-label="开始" onClick={onToggleStart}>▦</button>
-      {workspaces.map((w) => {
-        const id = String(w.workspaceId)
-        return (
-          <button
-            key={id}
-            type="button"
-            className={css.workspaceButton}
-            data-testid="taskbar-workspace"
-            data-workspace-id={id}
-            data-minimized={minimized[id] === true}
-            data-focused={focusedId === id}
-            onClick={() => { onWorkspace(id) }}
-          >
-            <span className={css.workspaceTitle}>{w.title}</span>
-          </button>
-        )
-      })}
+      <button type="button" className={css.startButton} data-start-open={sidebarOpen} aria-label="侧边栏" onClick={onToggleSidebar}><IconGrid /></button>
+      {windows.map(w => (
+        <button
+          key={w.id}
+          type="button"
+          className={css.workspaceButton}
+          data-testid="taskbar-workspace"
+          data-window-id={w.id}
+          data-minimized={w.minimized}
+          data-focused={currentId === w.id}
+          onClick={() => { onWorkspace(w.id) }}
+        >
+          <span className={css.workspaceTitle}>{w.title}</span>
+        </button>
+      ))}
       <div className={css.spacer} />
       {currentTitle !== undefined && (
         <div className={css.current}>

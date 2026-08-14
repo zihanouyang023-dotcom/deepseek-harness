@@ -14,12 +14,12 @@ export type DesktopBoundActions = BoundActions<ReturnType<typeof createWindowsSt
 
 /**
  * The outward layout face (`ctx.layout`) under the desktop shell: sidebar
- * toggling drives the start panel, details opening drives the focused
+ * toggling drives the fixed left column, details opening drives the focused
  * window's details pane. Structurally identical to ui-layout's ILayout so
  * both type programs merge cleanly.
  */
 export interface IWindowsLayout {
-  /** Toggle the start panel (the sidebar's home in the desktop shell). */
+  /** Toggle the fixed left sidebar column. */
   toggleSidebar(): void
   /** Open the details pane (no-op when already open). */
   openDetails(): void
@@ -40,9 +40,9 @@ export class WindowsLayoutController implements IWindowsLayout {
     this.#actions = actions
   }
 
-  /** Toggle the start panel (the sidebar's home in the desktop shell). */
+  /** Toggle the fixed left sidebar column. */
   toggleSidebar(): void {
-    this.#require().toggleStart()
+    this.#require().toggleSidebar()
   }
 
   /** Open the details pane (no-op when already open). */

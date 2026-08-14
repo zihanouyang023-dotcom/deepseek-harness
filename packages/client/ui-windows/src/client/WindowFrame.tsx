@@ -7,7 +7,7 @@
  */
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { WindowGeometry } from './contract.ts'
-import { TASKBAR_HEIGHT } from './stores.ts'
+import { IconClose, IconMaximize, IconMinimize, IconRestore } from './icons.tsx'
 import css from './WindowFrame.module.css'
 
 /** Chrome interaction surface of one desktop window. */
@@ -28,7 +28,7 @@ export interface WindowFrameProps {
   onMinimize: () => void
   /** Toggle the maximized flag. */
   onToggleMaximize: () => void
-  /** Close this window (the desktop maps it to minimize; workspaces persist). */
+  /** Close this window (the desktop drops it from the opened set). */
   onClose: () => void
   /** Report a new top-left position. */
   onMove: (x: number, y: number) => void
@@ -51,6 +51,10 @@ export function WindowFrame({
 
   const startDrag = () => (e: React.PointerEvent<HTMLDivElement>) => {
     if (maximized) return
+    // A press on a control button must fall through to its click: capturing
+    // here would retarget the click to the title bar and swallow the button
+    // (why a single maximize/close press seemingly needed a double-click).
+    if ((e.target as HTMLElement | null)?.closest('button') !== null) return
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     base.current = geometryRef.current
@@ -70,14 +74,17 @@ export function WindowFrame({
     setDragging(false)
   }
 
+  // Maximized frames fill their positioned container (the desktop renders them
+  // OUTSIDE the world transform); normal frames use world-space geometry.
   const style: CSSProperties = maximized
-    ? { left: 0, top: 0, right: 0, bottom: TASKBAR_HEIGHT, width: 'auto', height: 'auto' }
+    ? { left: 0, top: 0, width: '100%', height: '100%' }
     : { left: geometry.x, top: geometry.y, width: geometry.w, height: geometry.h }
 
   return (
     <div
       className={css.frame}
       style={style}
+      data-window="true"
       data-focused={focused}
       data-maximized={maximized}
       data-dragging={dragging || undefined}
@@ -95,9 +102,9 @@ export function WindowFrame({
           <span className={css.title}>{title}</span>
           {subtitle !== undefined && subtitle !== '' && <span className={css.subtitle}>{subtitle}</span>}
         </div>
-        <button type="button" className={css.control} data-kind="minimize" aria-label="最小化" onClick={onMinimize}>─</button>
-        <button type="button" className={css.control} data-kind="maximize" aria-label={maximized ? '还原' : '最大化'} onClick={onToggleMaximize}>{maximized ? '❐' : '□'}</button>
-        <button type="button" className={css.control} data-kind="close" aria-label="关闭" onClick={onClose}>✕</button>
+        <button type="button" className={css.control} data-kind="minimize" aria-label="最小化" onClick={onMinimize}><IconMinimize /></button>
+        <button type="button" className={css.control} data-kind="maximize" aria-label={maximized ? '还原' : '最大化'} onClick={onToggleMaximize}>{maximized ? <IconRestore /> : <IconMaximize />}</button>
+        <button type="button" className={css.control} data-kind="close" aria-label="关闭" onClick={onClose}><IconClose /></button>
       </div>
       <div className={css.body}>{children}</div>
       {!maximized && (

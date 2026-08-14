@@ -1,22 +1,73 @@
-/* Desktop chrome: a wallpaper-gradient work area over the dark taskbar, the
-   start panel above it, and the frame-wide overlay layer (click-through until
-   an entry opts in). */
+/* Desktop chrome in the native DSH light theme: the sidebar column and a
+   subtle dot-grid canvas between it and the taskbar; windows float as light
+   sheets on top. Everything rides the alias tokens so the shell follows the
+   app theme instead of shipping its own wallpaper. */
 .desktop {
   position: relative;
   height: 100%;
   overflow: hidden;
-  background:
-    radial-gradient(1100px 520px at 82% -8%, var(--dsw-static-deepseek-300), transparent 62%),
-    linear-gradient(155deg, var(--dsw-static-deepseek-500) 0%, var(--dsw-static-deepseek-800) 58%, var(--dsw-static-deepseek-950) 100%);
+  display: flex;
+  /* The absolute taskbar owns the bottom strip; padding keeps the sidebar
+     column and canvas (and so maximized windows) fully above it. A margin on
+     the canvas does NOT do this — it leaves the canvas's bottom edge under
+     the taskbar, hiding the message input while maximized. */
+  padding-bottom: 48px;
+  box-sizing: border-box;
+  background: var(--dsw-alias-bg-base);
 }
 
-.workArea {
-  position: absolute;
-  inset: 0 0 48px 0;
+/* Fixed left column hosting the native sidebar. */
+.sidebar {
+  position: relative;
+  flex: none;
+  height: 100%;
+  background: var(--dsw-alias-bg-base);
+  border-right: 1px solid var(--dsw-alias-border-l1);
+  z-index: 10;
+}
+
+/* The infinite canvas: blank-grab pan + wheel-zoom surface, to the right of
+   the sidebar. Windows sit in a world layer whose transform carries the viewport. */
+.canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   overflow: hidden;
+  background: var(--dsw-alias-bg-layer-1);
+  touch-action: none;
 }
 
-.focusedBody {
+/* A faint dot grid marks the world surface; it sits under the window layers
+   (z-index 1/2) so it never dithers window content. */
+.canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(var(--dsw-alias-fill-tsp-secondary) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  z-index: 1;
+}
+
+/* A maximized window lives outside the world transform: an absolute sheet
+   filling the canvas area (already taskbar-free via the desktop padding). */
+.maximizedLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.currentBody {
   display: flex;
   height: 100%;
   min-width: 0;
@@ -34,8 +85,29 @@
   flex: none;
   width: 380px;
   border-left: 1px solid var(--dsw-alias-border-l1);
-  background: var(--dsw-static-neutral-50);
+  background: var(--dsw-alias-bg-base);
   overflow: hidden;
+}
+
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.placeholderTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.placeholderMeta {
+  font-size: 12px;
 }
 
 .overlayLayer {
@@ -49,29 +121,61 @@
   pointer-events: auto;
 }
 
-.startPanel {
-  position: absolute;
-  left: 12px;
-  bottom: 60px;
-  width: 340px;
-  max-height: 70%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--dsw-static-neutral-50);
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 10px;
-  box-shadow: var(--dsw-shadow-lv3);
-  z-index: 30;
-}
-
 .emptyHint {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--dsw-static-neutral-00);
-  opacity: 0.9;
+  color: var(--dsw-alias-label-quaternary);
   font-size: 14px;
+  pointer-events: none;
+}
+
+/* Right-click zoom menu on the blank canvas, in the native menu idiom. */
+.ctxMenu {
+  position: absolute;
+  z-index: 30;
+  min-width: 168px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  box-shadow: var(--dsw-shadow-lv3);
+}
+
+.ctxHeader {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-quaternary);
+}
+
+.ctxItem {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ctxItem:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.ctxItem:disabled {
+  color: var(--dsw-alias-label-quaternary);
+  cursor: default;
+}
+
+.ctxDivider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--dsw-alias-border-l1);
 }

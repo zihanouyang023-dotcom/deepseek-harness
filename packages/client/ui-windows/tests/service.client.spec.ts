@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { WindowsLayoutController } from '../src/client/service.ts'
 
 const actions = () => ({
-  toggleStart: vi.fn(),
+  toggleSidebar: vi.fn(),
   setDetailsOpen: vi.fn(),
 })
 
@@ -19,7 +19,7 @@ describe('WindowsLayoutController', () => {
     const bound = actions()
     controller.attachActions(bound as never)
     controller.toggleSidebar()
-    expect(bound.toggleStart).toHaveBeenCalledOnce()
+    expect(bound.toggleSidebar).toHaveBeenCalledOnce()
     controller.openDetails()
     expect(bound.setDetailsOpen).toHaveBeenLastCalledWith(true)
     controller.closeDetails()

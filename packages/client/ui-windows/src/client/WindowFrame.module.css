@@ -1,21 +1,27 @@
-/* One window: a white rounded frame floating on the desktop wallpaper, with a
-   colored title bar while focused and a gray one while inactive; bottom-right
-   resize handle; maximized frames fill the work area and drop the radius. */
+/* One window in the native DSH idiom: a light rounded frame floating over the
+   canvas, a flat neutral title bar (the focused window carries a thin brand
+   accent line instead of a colored bar), and a bottom-right resize grip. */
 .frame {
   position: absolute;
   display: flex;
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-static-neutral-00);
-  border: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 10px;
   box-shadow: var(--dsw-shadow-lv3);
   touch-action: none;
 }
 
 .frame[data-focused='false'] {
+  border-color: var(--dsw-alias-border-l1);
   box-shadow: var(--dsw-shadow-lv1);
+}
+
+/* Focus reads as a 2px brand line under the title bar, not a colored bar. */
+.frame[data-focused='true'] .titleBar {
+  border-bottom: 2px solid var(--dsw-alias-brand-primary);
 }
 
 .frame[data-maximized='true'] {
@@ -30,15 +36,10 @@
   height: 40px;
   padding: 0 4px 0 14px;
   gap: 4px;
-  background: var(--dsw-static-neutral-150);
+  background: var(--dsw-alias-bg-layer-2);
   border-bottom: 1px solid var(--dsw-alias-border-l1);
-  cursor: default;
+  cursor: move;
   user-select: none;
-}
-
-.frame[data-focused='true'] .titleBar {
-  background: linear-gradient(90deg, var(--dsw-static-deepseek-600), var(--dsw-static-deepseek-500));
-  border-bottom-color: transparent;
 }
 
 .titleText {
@@ -59,9 +60,8 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.frame[data-focused='true'] .title,
-.frame[data-focused='true'] .subtitle {
-  color: var(--dsw-static-neutral-00);
+.frame[data-focused='false'] .title {
+  color: var(--dsw-alias-label-secondary);
 }
 
 .subtitle {
@@ -69,11 +69,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: var(--dsw-alias-label-secondary);
-}
-
-.frame[data-focused='true'] .subtitle {
-  opacity: 0.85;
+  color: var(--dsw-alias-label-tertiary);
 }
 
 .control {
@@ -96,17 +92,9 @@
   color: var(--dsw-alias-label-primary);
 }
 
-.frame[data-focused='true'] .control {
-  color: var(--dsw-static-neutral-00);
-}
-
-.frame[data-focused='true'] .control:hover {
-  background: var(--dsw-static-deepseek-400);
-  color: var(--dsw-static-neutral-00);
-}
-
-.frame[data-focused='true'] .control[data-kind='close']:hover {
-  background: var(--dsw-static-red-600);
+.control[data-kind='close']:hover {
+  background: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-label-primary-foreground);
 }
 
 .body {
@@ -115,16 +103,29 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--dsw-static-neutral-50);
+  background: var(--dsw-alias-bg-base);
 }
 
 .resize {
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   cursor: nwse-resize;
   touch-action: none;
   z-index: 2;
+}
+
+/* A visible corner grip so the resize affordance is discoverable. */
+.resize::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid var(--dsw-alias-border-l3);
+  border-bottom: 2px solid var(--dsw-alias-border-l3);
+  border-bottom-right-radius: 2px;
 }

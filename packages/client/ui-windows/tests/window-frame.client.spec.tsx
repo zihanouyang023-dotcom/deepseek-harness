@@ -71,18 +71,24 @@ describe('WindowFrame', () => {
     expect(props.onMove).toHaveBeenCalledWith(160, 100)
   })
 
+  it('pressing a control button never starts a drag that would swallow its click', () => {
+    const props = mount()
+    drag(screen.getByLabelText('最大化'), { x: 200, y: 100 }, { x: 260, y: 140 })
+    expect(props.onMove).not.toHaveBeenCalled()
+  })
+
   it('resizes from the bottom-right handle', () => {
     const props = mount()
     drag(screen.getByTestId('window-resize'), { x: 900, y: 560 }, { x: 950, y: 600 })
     expect(props.onResize).toHaveBeenCalledWith(850, 540)
   })
 
-  it('maximized windows fill the work area and disable drag and resize', () => {
+  it('maximized windows fill their container and disable drag and resize', () => {
     const props = mount({ maximized: true })
     const frame = document.querySelector('[data-maximized="true"]') as HTMLElement
     expect(frame.style.left).toBe('0px')
-    expect(frame.style.right).toBe('0px')
-    expect(frame.style.bottom).toBe('48px')
+    expect(frame.style.width).toBe('100%')
+    expect(frame.style.height).toBe('100%')
     expect(screen.getByLabelText('还原')).toBeTruthy()
     expect(screen.queryByTestId('window-resize')).toBeNull()
     drag(screen.getByTestId('window-titlebar'), { x: 200, y: 100 }, { x: 260, y: 140 })
